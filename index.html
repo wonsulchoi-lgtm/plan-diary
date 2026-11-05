@@ -209,7 +209,7 @@ pre.prompt{white-space:pre-wrap;background:#fff;border:2px dashed #c9c0ea;border
 <footer class="nav">
   <div class="wrap">
     <button class="btn" id="prevBtn">◀ 이전 장</button>
-    <div class="dots"><span id="stepNum"></span><div class="bar"><i id="stepBar"></i></div></div>
+    <div class="dots"><span id="stepNum"></span> <small id="cloud" style="font-family:'Gowun Dodum';font-size:.75rem"></small><div class="bar"><i id="stepBar"></i></div></div>
     <button class="btn pri" id="nextBtn">다음 장 ▶</button>
   </div>
 </footer>
@@ -222,6 +222,7 @@ pre.prompt{white-space:pre-wrap;background:#fff;border:2px dashed #c9c0ea;border
 const KEY = 'plan-diary-d5-v2';
 const LETTERS = ['S','C','A','M','P','E','R'];
 const blank = () => ({
+  uid:Math.random().toString(36).slice(2, 10) + Date.now().toString(36), aiUsed:0,
   ch:0, xp:0, awards:{}, stamps:{}, sound:true,
   nick:'', job:'', mood0:'', mood1:'',
   oneline:'', target:'', situ:'', pain:'', impact:'', goal:'', sentence:'', sentenceEdited:false, check:null,
@@ -236,8 +237,26 @@ const blank = () => ({
 });
 let D;
 try { D = Object.assign(blank(), JSON.parse(localStorage.getItem(KEY) || '{}')); } catch(e) { D = blank(); }
+localStorage.setItem(KEY, JSON.stringify(D));  // 처음 만든 학생 id를 바로 기억
 let saveT;
-const save = () => { clearTimeout(saveT); saveT = setTimeout(() => localStorage.setItem(KEY, JSON.stringify(D)), 250); };
+const save = () => { clearTimeout(saveT); saveT = setTimeout(() => localStorage.setItem(KEY, JSON.stringify(D)), 250); queueCloud(); };
+/* 서버에도 저장 (관리자 페이지용). 서버 저장소가 없으면 조용히 건너뜀 */
+let cloudT, cloudOff = false;
+function cloudPayload(){
+  const counted = STEPS.filter(s => !s.nocount);
+  return JSON.stringify({id:D.uid, nick:D.nick, job:D.job, oneline:D.oneline, sentence:D.sentence, final:D.final, xp:D.xp, mood0:D.mood0, mood1:D.mood1, aiUsed:D.aiUsed,
+    progress:{n:counted.filter(s => s.need()).length, total:counted.length, chapters:CH.map((c, i) => chDone(i)), ch:D.ch}, ws:worksheetText(), report:D.report});
+}
+function queueCloud(){ if (cloudOff || DEMO) return; clearTimeout(cloudT); cloudT = setTimeout(pushCloud, 4000); }
+async function pushCloud(){
+  if (cloudOff || DEMO || !filled(D.nick)) return;
+  try {
+    const r = await fetch('api/save', {method:'POST', headers:{'Content-Type':'application/json'}, body:cloudPayload()});
+    if ([404, 405, 501, 503].includes(r.status)) { cloudOff = true; return; }
+    if (r.ok) $('#cloud').textContent = '☁️ ' + new Date().toLocaleTimeString('ko-KR', {hour:'2-digit', minute:'2-digit'}) + ' 저장';
+  } catch(e) {}
+}
+addEventListener('pagehide', () => { if (!cloudOff && !DEMO && filled(D.nick) && navigator.sendBeacon) navigator.sendBeacon('api/save', new Blob([cloudPayload()], {type:'application/json'})); });
 const DEMO = new URLSearchParams(location.search).has('demo');
 
 /* =========================================================
@@ -342,6 +361,7 @@ async function runAI(task, payload, box, onDone, xpKey){
   document.querySelectorAll('.btn.ai').forEach(b => b.disabled = true);
   try {
     const res = await callAI(task, payload);
+    D.aiUsed = (D.aiUsed || 0) + 1;
     onDone(res); save();
     if (xpKey) award(xpKey, 15, 'AI 도움 받기');
   } catch(e) {
@@ -392,7 +412,6 @@ const SC = {
   R:{en:'Reverse', ko:'반전', q:'순서나 방향을 바꾸면 어떨까?', hints:['끝에서부터 거꾸로 하면?','요청하는 부서와 받는 부서를 바꾸면?','사후 검사 대신 사전 예방을 먼저 하면?','문제를 일부러 키우면 무엇이 보일까?','사람이 찾지 말고 정보가 먼저 알려 주면?'], ex:'검사 후에 입력하지 않고, 입력하면서 검사가 끝나게 순서를 바꾼다'},
 };
 const LENS = ['정보','절차','도구','기준'];
-const EVK = ['근 번호','맵에서 확인','가설'];
 const CRIT = [['효과','원인을 얼마나 줄이나'],['비용','무료 도구, 내 손으로'],['기간','짧은 시간 안에'],['리스크','틀렸을 때 걱정']];
 const PICK_CRIT = ['고른 원인을 직접 겨냥한다','입력 화면 + 목록·요약 화면, 1~2개로 보일 수 있다',"필요한 데이터를 '가상'으로라도 채울 수 있다"];
 
@@ -438,7 +457,7 @@ STEPS.push({ch:0, id:'five', need:() => ELK.every(k => filled(D[k])),
     <h2 class="q">다섯 칸을 위에서부터 채워요 🧩</h2><p class="sub">칸을 채울 때마다 아래 문제정의 문장이 자동으로 조립돼요.</p>
     ${ELK.map((k, i) => `<div class="card"><h4>${i + 1}. ${EL[k].lab} — ${EL[k].q}</h4><p class="sub" style="margin:0 0 8px">${EL[k].sub}</p>
       ${ta(k, EL[k].ph, 2)}<div class="ex" style="margin-bottom:0">예시: ${EL[k].ex}</div></div>`).join('')}`});
-STEPS.push({ch:0, id:'sentence', need:() => filled(D.sentence),
+STEPS.push({ch:0, id:'sentence', need:() => filled(D.sentence) && !/\[(대상|상황|불편|영향)\]/.test(D.sentence),
   html:() => `<span class="kicker">1 · 나의 직무상의 문제정의 한 문장</span>
     <h2 class="q">나의 직무상의 문제정의 한 문장 📝</h2>
     <div class="formula" data-live="formula"></div>
@@ -475,16 +494,14 @@ STEPS.push({ch:1, id:'causes', need:() => D.star >= 0 && filled(starCause()),
       <div class="row"><h4 class="grow">원인 후보 ${i + 1}</h4><button class="starbtn ${D.star === i ? 'on' : ''}" data-star="${i}" title="이 원인 고르기">⭐</button></div>
       ${inp(`causes.${i}.t`, ['예) 검사 결과를 바로 입력할 정해진 양식이 없다','예) 기록지 → 엑셀로 두 번 옮겨 적는다','예) 항목 이름·단위 기준이 사람마다 다르다'][i])}
       <div style="margin-top:6px">${LENS.map(l => `<button class="chip ${c.lens === l ? 'on' : ''}" data-lens="${i}" data-v="${l}">${l}</button>`).join('')}</div>
-      <label class="lab">근거 <small>무엇으로 확인했나요?</small></label>
-      <div>${EVK.map(l => `<button class="chip ${c.ev === l ? 'on' : ''}" data-ev="${i}" data-v="${l}">${l}</button>`).join('')}</div>
-      ${inp(`causes.${i}.note`, '근거 메모 (예: 맵의 “기록” 단계, 현장 인터뷰 2번)')}
+      <label class="lab">근거 <small>왜 그렇게 생각했나요? 무엇으로 확인했나요?</small></label>
+      ${inp(`causes.${i}.note`, '예) 기록지와 엑셀 숫자를 비교해 보니 하루 3~4건이 달랐다')}
       <label class="lab">확인할 질문</label>${inp(`causes.${i}.q`, '예) 지난달 입력 오류는 몇 건이었나요?')}
     </div>`).join('')}
     <button class="btn ai" id="causeBtn">🔍 버기에게 원인 렌즈 힌트 받기</button><div id="causeBox"></div>`,
   after:() => {
     document.querySelectorAll('[data-star]').forEach(b => b.onclick = () => { D.star = +b.dataset.star; save(); beep('ok'); renderSec('causes'); });
     document.querySelectorAll('[data-lens]').forEach(b => b.onclick = () => { D.causes[b.dataset.lens].lens = b.dataset.v; save(); beep('tick'); renderSec('causes'); });
-    document.querySelectorAll('[data-ev]').forEach(b => b.onclick = () => { D.causes[b.dataset.ev].ev = b.dataset.v; save(); beep('tick'); renderSec('causes'); });
     const show = r => {
       $('#causeBox').innerHTML = `<div class="aibox"><h4>🐞 버기의 원인 렌즈</h4><p>${esc(r.comment || '')}</p>
         ${(r.causes || []).map((c, i) => `<div class="idea"><div class="t"><b>[${esc(c.lens)}] ${esc(c.cause)}</b><div>근거: ${esc(c.evidence)}<br>확인 질문: ${esc(c.question)}</div></div>
@@ -492,8 +509,7 @@ STEPS.push({ch:1, id:'causes', need:() => D.star >= 0 && filled(starCause()),
       document.querySelectorAll('[data-take]').forEach(b => b.onclick = () => {
         const c = r.causes[b.dataset.take]; const slot = D.causes.findIndex(x => !filled(x.t));
         if (slot < 0) return toast('빈 원인 칸이 없어요. 하나를 지우고 넣어 주세요');
-        const ev = EVK.find(e => String(c.evidence).startsWith(e)) || '가설';
-        D.causes[slot] = {t:c.cause, lens:LENS.includes(c.lens) ? c.lens : '', ev, note:String(c.evidence).replace(/^[^:]*:\s*/, ''), q:c.question};
+        D.causes[slot] = {t:c.cause, lens:LENS.includes(c.lens) ? c.lens : '', ev:'', note:String(c.evidence || ''), q:c.question};
         save(); renderSec('causes'); toast(`원인 후보 ${slot + 1}에 넣었어요`);
       });
     };
@@ -698,7 +714,7 @@ function worksheetText(){
   L.push(`[1] 문제정의 다섯 칸: 대상=${D.target} / 상황=${D.situ} / 불편=${D.pain} / 영향=${D.impact} / 목표=${D.goal}`);
   L.push(`나의 직무상의 문제정의 한 문장: ${D.sentence}`);
   L.push('[2] 원인 후보와 근거:');
-  D.causes.forEach((c, i) => filled(c.t) && L.push(`${D.star === i ? '★' : '-'} ${c.t} (렌즈: ${c.lens || '-'}, 근거: ${c.ev || '-'} ${c.note || ''}, 확인할 질문: ${c.q || '-'})`));
+  D.causes.forEach((c, i) => filled(c.t) && L.push(`${D.star === i ? '★' : '-'} ${c.t} (렌즈: ${c.lens || '-'}, 근거: ${c.note || '-'}, 확인할 질문: ${c.q || '-'})`));
   L.push('[3] SCAMPER 해결안 (해결안1=내가 직접 / 해결안2=AI와 함께, ✓=원인 직접 겨냥):');
   LETTERS.forEach(x => L.push(`${x} ${SC[x].ko}: 1) ${D.sc[x].a || '-'}${D.sc[x].ca ? ' ✓' : ''} / 2) ${D.sc[x].b || '-'}${D.sc[x].cb ? ' ✓' : ''}`));
   if (D.aiSc && D.aiSc.top3) L.push('AI TOP3: ' + D.aiSc.top3.map(t => `${t.rank}위 ${t.idea}(${t.type})`).join(' / '));
@@ -852,7 +868,7 @@ $('#menuBtn').onclick = () => {
 function demoAnswer(task){
   const t = {
     check:{target:true, situ:true, pain:true, impact:!!D.impact.trim(), goal:true, feedback:'대상과 상황이 아주 구체적이에요! 영향에 숫자가 있다면 (가정)을 붙여 주세요.', better:''},
-    cause:{comment:'옮겨 적기를 원인으로 짚은 점, 날카로워요!', causes:LENS.map(l => ({lens:l, cause:`${l} 쪽 예시 원인`, evidence:'가설: 맵에서 확인 필요', question:'지난달 입력 오류는 몇 건이었나요?'}))},
+    cause:{comment:'옮겨 적기를 원인으로 짚은 점, 날카로워요!', causes:LENS.map(l => ({lens:l, cause:`${l} 쪽 예시 원인`, evidence:'현장 담당자에게 확인 필요', question:'지난달 입력 오류는 몇 건이었나요?'}))},
     scamper:{core:'수기 입력과 옮겨 적기 때문에 검사 결과에 오류가 생기는 문제', cheer:'E 카드의 “옮겨 적기 없애기”가 원인을 정확히 겨냥했어요!',
       items:Object.fromEntries(LETTERS.map(L => [L, [{idea:`${SC[L].ko} 예시 아이디어 1`, desc:'연습 모드 예시 설명이에요.', hitsCause:true},{idea:`${SC[L].ko} 예시 아이디어 2`, desc:'연습 모드 예시 설명이에요.', hitsCause:false}]])),
       top3:[{rank:1, idea:'대체 예시 아이디어 1', type:'S', reason:'화면 2개로 바로 시연 가능'},{rank:2, idea:'제거 예시 아이디어 1', type:'E', reason:'원인을 직접 줄임'},{rank:3, idea:'응용 예시 아이디어 1', type:'A', reason:'익숙한 방식이라 쓰기 쉬움'}],

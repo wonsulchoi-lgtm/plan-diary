@@ -5,7 +5,8 @@
   'plan-diary_GitHub올릴파일' 폴더 안의 것을 모두 끌어다 놓고 Commit changes
     index.html      화면
     prompts.json    AI 프롬프트 모음
-    api/ai.js       AI 연결 (Vercel 서버 함수) ※ api 폴더째로
+    admin.html      관리자(강사) 페이지
+    api/ai.js       AI 연결 (Vercel 서버 함수) ※ api 폴더째로 (ai.js, save.js, admin.js, _db.js)
     package.json    Claude SDK 설치 목록
     vercel.json     Vercel 설정 (함수 시간 120초)
     README.md       저장소 설명
@@ -19,6 +20,18 @@
   Vercel 프로젝트 → Settings → Environment Variables
     Key: ANTHROPIC_API_KEY   Value: sk-ant-... (console.anthropic.com → API Keys)
   저장 후 Deployments → 맨 위 ⋯ → Redeploy
+
+■ 4. 관리자 페이지 켜기
+  (1) 학생 기록 저장소 연결: Vercel 프로젝트 → Storage → Create Database(또는 Marketplace)
+      → 'Upstash for Redis' 선택 → Free 플랜 → 이 프로젝트에 Connect
+      (환경 변수 KV_REST_API_URL, KV_REST_API_TOKEN 이 자동으로 들어감)
+  (2) Settings → Environment Variables 에 Key: ADMIN_PASSWORD  Value: 정한 비밀번호
+  (3) Deployments → ⋯ → Redeploy
+  주소: https://(프로젝트).vercel.app/admin.html → 비밀번호 입력
+  보이는 것: 학생 수·평균 진행률·기획서 완성 수, 장별 완료, 학생별 진행·문제·최종안·AI 사용,
+            '보기'(워크시트 전체 + AI 기획서), 엑셀(CSV) 내려받기, 학생별/전체 삭제, 30초 자동 새로고침
+  학생 화면은 이름을 쓰면 4초마다 서버에 자동 저장 (아래 진행 막대 옆 ☁️ 표시)
+  관리자 화면 연습: admin.html?demo=1
 
 ■ 모델
   기본 claude-sonnet-5-5. 바꾸려면 환경 변수 CLAUDE_MODEL 추가 (예: claude-opus-5-5)
