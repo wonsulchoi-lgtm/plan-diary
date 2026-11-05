@@ -1,0 +1,8 @@
+{
+  "name": "plan-diary",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@anthropic-ai/sdk": "latest"
+  }
+}

@@ -17,12 +17,17 @@
 | 파일 | 하는 일 |
 |---|---|
 | `index.html` | 화면 전체 (학생 기록은 브라우저 localStorage에 저장) |
-| `api.php` | 브라우저 → Claude API 중계 (API 키는 서버에만) |
+| `api/ai.js` | **Vercel용** 브라우저 → Claude API 중계 (키는 Vercel 환경 변수에만) |
+| `package.json`, `vercel.json` | Vercel 설정 (Claude SDK 설치, 함수 시간 120초) |
+| `api.php` | PHP 호스팅용 중계 (Vercel에서는 안 씀) |
 | `prompts.json` | AI 프롬프트 모음 (화면과 서버가 같이 씀) |
 | `config.sample.php` | 설정 예시 → `config.php`로 복사해 키 입력 (**GitHub에 올리지 않음**) |
 | `data/.htaccess` | 사용량 기록 폴더를 웹에서 못 열게 막음 |
 
 ## 실행
+
+- **Vercel** (추천): GitHub 저장소를 Vercel에 Import → Settings → Environment Variables에 `ANTHROPIC_API_KEY` 추가 → Redeploy.
+  - 기본 모델은 `claude-sonnet-5-5`. 바꾸려면 환경 변수 `CLAUDE_MODEL`(예: `claude-opus-5-5`)을 추가합니다.
 
 - **PHP 호스팅** (AI까지 모두 동작): 파일을 올리고 `config.php`에 Anthropic API 키를 넣습니다. 자세한 순서는 `업로드_방법.txt`.
 - **GitHub Pages** (PHP가 없어 AI 호출은 안 됨): 화면과 입력은 모두 됩니다.

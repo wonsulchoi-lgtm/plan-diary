@@ -326,8 +326,13 @@ function promptText(task, payload){
 }
 async function callAI(task, payload){
   if (DEMO) { await new Promise(r => setTimeout(r, 1200)); return demoAnswer(task); }
-  const r = await fetch('api.php', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({task, payload, nick:D.nick.slice(0, 20)})});
-  let j; try { j = await r.json(); } catch(e) { throw new Error('AI 서버(api.php)에 연결하지 못했어요'); }
+  // Vercel이면 api/ai, PHP 호스팅이면 api.php (앞이 없으면 뒤로)
+  const body = JSON.stringify({task, payload, nick:D.nick.slice(0, 20)});
+  const post = url => fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body});
+  let r = await post('api/ai').catch(() => null);
+  if (!r || [404, 405, 501].includes(r.status)) r = await post('api.php').catch(() => null);
+  if (!r) throw new Error('AI 서버에 연결하지 못했어요');
+  let j; try { j = await r.json(); } catch(e) { throw new Error('AI 서버에 연결하지 못했어요'); }
   if (!r.ok || j.error) throw new Error(j.error || ('오류 ' + r.status));
   return j.result;
 }

@@ -1,26 +1,32 @@
-[ 팀 기획 다이어리 (5일차 1~2교시) — 서버 올리는 방법 ]
+[ 나의 직무 기획 다이어리 — GitHub + Vercel 올리는 방법 ]
 
-■ 흐름 (D5-1·3 워크시트 기반, 개인 작업 · 탭마다 한 장, 장 안에서는 아래로 쭉 → [다음 장 ▶])
- 📓 직무 문제   이름 → 나의 직무 문제 한 줄 → 문제정의 다섯 칸 → 나의 직무상의 문제정의 한 문장(+AI 점검)
- 🔍 원인        원인 후보 3개·근거·확인 질문, ⭐ 고르기 (+AI 원인 렌즈 힌트)
- 🎨 SCAMPER     7장 카드가 아래로 쭉, '혼자 쓰기'(AI 없음: 힌트 주사위, 90초 번개 도전)
- 🤖 AI와 함께   SCAMPER 전문가 프롬프트 자동 적용 → ➕담기 → SCAMPER 표(10개 목표) → 3개로 압축
- 🏆 결정        해결안 비교(상·중·하, 자동 메달) → 최종안 → KPI 2개(+AI 제안) → 프로토타입 범위
- 📜 기획서      AI가 '나의 직무 개선 기획서 + 선배 코멘트 + 30초 발표 멘트'로 정리 → 복사·인쇄(PDF)
- 예시는 모두 회사 직무 상황(품질 검사·생산기술·설비보전·물류). 위에서 쓴 내용은 아래 칸에서 다시 보여 줌.
+■ 1. GitHub에 파일 올리기
+  저장소(github.com/wonsulchoi-lgtm/plan-diary) → Add file → Upload files
+  'plan-diary_GitHub올릴파일' 폴더 안의 것을 모두 끌어다 놓고 Commit changes
+    index.html      화면
+    prompts.json    AI 프롬프트 모음
+    api/ai.js       AI 연결 (Vercel 서버 함수) ※ api 폴더째로
+    package.json    Claude SDK 설치 목록
+    vercel.json     Vercel 설정 (함수 시간 120초)
+    README.md       저장소 설명
+    업로드_방법.txt  이 안내
+    .gitignore      키 파일 등 제외 목록 (숨김 파일: Finder에서 Cmd+Shift+. 로 보임)
 
-■ 올리기
-1) FTP로 /hosting/hrdhrd/html/plan/ 폴더에 올리기
-   올릴 파일: index.html, api.php, prompts.json, data/ 폴더(.htaccess 포함)
-2) AI 키: 3일차 /quest/config.php 가 서버에 있으면 그대로 같이 씁니다(따로 할 일 없음).
-   없으면 config.sample.php → config.php 로 이름 바꿔 키를 넣고 같이 올리기
-3) data 폴더 권한 707 (AI 사용량 기록 usage.json)
-4) 주소: http://(도메인)/plan/
-   연습 모드(AI 안 부르고 예시 답): http://(도메인)/plan/?demo=1
+■ 2. Vercel 연결
+  vercel.com → Continue with GitHub → Add New → Project → plan-diary Import → Deploy
 
-■ 알아 둘 것
-- 학생 기록은 학생 브라우저(localStorage)에 저장됩니다. 다른 PC로 옮길 때는 ☰ 메뉴 → 1번(파일로 내려받기) / 2번(불러오기).
-- AI가 안 될 때(키 없음·사용량 초과 등) 화면에 '프롬프트 복사' 버튼이 나옵니다.
-  학생이 ChatGPT·Claude에 붙여 넣고, 받은 답을 다시 붙여 넣으면 그대로 이어집니다.
-- 프롬프트를 고치고 싶으면 prompts.json 만 고치면 됩니다(서버와 화면이 같이 씀).
-- AI 호출은 학생 1명당 대략 5~8번(점검·원인·SCAMPER·KPI·기획서).
+■ 3. API 키 넣기 (코드에 넣지 않음!)
+  Vercel 프로젝트 → Settings → Environment Variables
+    Key: ANTHROPIC_API_KEY   Value: sk-ant-... (console.anthropic.com → API Keys)
+  저장 후 Deployments → 맨 위 ⋯ → Redeploy
+
+■ 모델
+  기본 claude-sonnet-5-5. 바꾸려면 환경 변수 CLAUDE_MODEL 추가 (예: claude-opus-5-5)
+
+■ 확인
+  https://(프로젝트).vercel.app → 문제정의 장 '버기 심사위원에게 점검받기' 결과가 나오면 OK
+  연습 모드(AI 안 부름): 주소 끝에 ?demo=1
+
+■ 비용 보호
+  console.anthropic.com → Settings → Limits 에서 월 사용 한도(Spend limit) 설정
+  학생 1명당 AI 호출 5~8번(점검·원인·SCAMPER·KPI·기획서)
