@@ -1,0 +1,6 @@
+# API 키가 들어 있는 설정 파일은 절대 올리지 않습니다
+config.php
+# 서버에서 생기는 AI 사용량 기록
+data/usage.json
+# 맥 시스템 파일
+.DS_Store
